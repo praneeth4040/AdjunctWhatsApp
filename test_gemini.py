@@ -3,6 +3,7 @@ import os
 import google.generativeai as genai
 from gemini_prompt import SYSTEM_PROMPT
 
+
 # If using environment variable or hardcoded key
 GEMINI_API_KEY ="AIzaSyDwd6q4S4RjgbUzDAeq78rQjj0M3wXU6VU"
 genai.configure(api_key=GEMINI_API_KEY)

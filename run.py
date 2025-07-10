@@ -1,4 +1,6 @@
 from flask import Flask, request, abort, jsonify
+from webhook_server import extract_user_message,extract_sender
+from test_gemini import ai_response
 
 app = Flask(__name__)
 
@@ -16,7 +18,11 @@ def webhook():
         else:
             return 'Verification token mismatch', 403
     elif request.method == 'POST':
-        print(request.json)
+      
+        msg=extract_user_message(request.json)
+        sender=extract_sender(request.json)
+        print(msg,sender)
+        print(ai_response(msg))
         return jsonify({'status': 'success'}), 200
 
 if __name__ == '__main__':
