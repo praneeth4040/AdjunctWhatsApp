@@ -1,4 +1,4 @@
-from tools.reminder import set_reminder
+from tools.reminder import schedule_whatsapp_reminder
 
 def dispatch_tool_call(name, args, recipient):
     """
@@ -10,6 +10,6 @@ def dispatch_tool_call(name, args, recipient):
         dict: The result from the tool function.
     """
     if name == "set_reminder":
-        return set_reminder(recipient,args["event"], args["time_str"])
+        return schedule_whatsapp_reminder(recipient,args["event"], args["time_str"])
     else:
         return {"result": f"Unknown tool: {name}"} 
