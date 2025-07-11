@@ -23,7 +23,7 @@ def webhook():
             msg=extract_user_message(request.json)
             sender=extract_sender(request.json)
             print(msg,sender)
-            ai_reponse=ai_response(msg)
+            ai_reponse=ai_response(sender,msg)
             send_message(get_text_message_input(sender,ai_reponse))
         except Exception as e:
             print(e)
