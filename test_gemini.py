@@ -28,7 +28,7 @@ tools = types.Tool(function_declarations=[reminder_function])
 config = types.GenerateContentConfig(tools=[tools])
 
 # Send request with function declarations
-def ai_response(user_message):
+def ai_response(recipient,user_message):
     response = client.models.generate_content(
     model="gemini-2.5-flash",
     contents=user_message,
@@ -39,7 +39,7 @@ def ai_response(user_message):
         function_call = response.candidates[0].content.parts[0].function_call
         print(f"Function to call: {function_call.name}")
         print(f"Arguments: {function_call.args}")
-        result = dispatch_tool_call(function_call.name,function_call.args)
+        result = dispatch_tool_call(function_call.name,function_call.args,recipient)
         return result
     else:
         print("No function call found in the response.")
