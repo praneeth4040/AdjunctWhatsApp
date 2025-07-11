@@ -2,6 +2,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 import re
+from message import send_message , get_text_message_input
 
 def parse_time_string(time_str):
     """
@@ -38,24 +39,28 @@ def parse_time_string(time_str):
             continue
     return None
 
-def set_reminder(event: str, time_str: str):
+def schedule_whatsapp_reminder(recipient: str, event: str, time_str: str):
     """
-    Sets a reminder for the user. Supports absolute times (e.g., '5:30pm', '17:30')
-    and relative times (e.g., 'after 1 min', 'in 2 hours').
-    Enforces a 24-hour limit.
+    Schedules a WhatsApp reminder message to be sent at a future time,
+    via send_message / get_text_message_input.
     """
-    now = datetime.now()
     reminder_time = parse_time_string(time_str)
     if not reminder_time:
-        return {"result": "Invalid time format. Please use formats like '5:30pm', 'after 1 min', or 'in 2 hours'."}
-    delta = reminder_time - now
+        return {"result": "Invalid time format. Use '5:30pm', 'in 10 minutes', etc."}
+
+    delta = reminder_time - datetime.now()
     if delta > timedelta(hours=24):
-        return {"result": "Unable to set reminder for more than 24 hours from now."}
+        return {"result": "Cannot set reminders more than 24 hours ahead."}
+
     def reminder_thread():
-        wait_seconds = delta.total_seconds()
-        if wait_seconds > 0:
-            time.sleep(wait_seconds)
-        print(f"\n[REMINDER] {event} (at {reminder_time.strftime('%I:%M %p')})\n")
+        secs = delta.total_seconds()
+        if secs > 0:
+            time.sleep(secs)
+        msg_text = f"🔔 Reminder: {event} (scheduled at {reminder_time.strftime('%I:%M %p')})"
+        structured = get_text_message_input(recipient, msg_text)
+        send_message(structured)
+
     t = threading.Thread(target=reminder_thread, daemon=True)
     t.start()
-    return {"result": f"Reminder set for {reminder_time.strftime('%I:%M %p')}: {event}"} 
+
+    return {"result": f"Reminder set for {recipient} at {reminder_time.strftime('%I:%M %p')}: {event}"}

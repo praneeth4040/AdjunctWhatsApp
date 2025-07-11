@@ -1,6 +1,6 @@
 from tools.reminder import set_reminder
 
-def dispatch_tool_call(name, args):
+def dispatch_tool_call(name, args, recipient):
     """
     Dispatches the tool call to the correct function based on name.
     Args:
@@ -10,6 +10,6 @@ def dispatch_tool_call(name, args):
         dict: The result from the tool function.
     """
     if name == "set_reminder":
-        return set_reminder(args["event"], args["time_str"])
+        return set_reminder(recipient,args["event"], args["time_str"])
     else:
         return {"result": f"Unknown tool: {name}"} 

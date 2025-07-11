@@ -2,5 +2,5 @@ flask
 python-dotenv
 requests
 aiohttp
-google.genai
+google-genai
 supabase
