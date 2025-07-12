@@ -4,3 +4,4 @@ requests
 aiohttp
 google-genai
 supabase
+dateparser
