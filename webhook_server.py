@@ -1,5 +1,6 @@
 from flask import Flask, request
-from message import get_text_message_input, send_message
+from whatsapp_utils.message_types import get_text_message_input
+from message import send_message
 from test_gemini import ai_response
 import json
 

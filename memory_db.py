@@ -1,4 +1,4 @@
-dofrom db import supabase
+from db import supabase
 
 def store_user_memory(user_number, memory_text):
     supabase.table("user_memory").insert({
