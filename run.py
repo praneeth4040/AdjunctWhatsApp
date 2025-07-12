@@ -1,7 +1,8 @@
 from flask import Flask, request, abort, jsonify
 from webhook_server import extract_user_message,extract_sender
 from test_gemini import ai_response
-from message import send_message , get_text_message_input
+from message import send_message
+from whatsapp_utils.message_types import get_text_message_input
 
 app = Flask(__name__)
 

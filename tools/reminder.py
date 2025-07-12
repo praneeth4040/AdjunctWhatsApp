@@ -2,42 +2,28 @@ import threading
 import time
 from datetime import datetime, timedelta
 import re
-from message import send_message , get_text_message_input
+from message import send_message
+from whatsapp_utils.message_types import get_text_message_input
+import dateparser
 
 def parse_time_string(time_str):
     """
-    Parses time_str which can be:
-    - Absolute time: '5:30pm', '17:30'
-    - Relative time: 'after 1 min', 'in 2 hours', 'after 30 seconds'
+    Parses a wide range of natural language time expressions.
     Returns a datetime object for the reminder time, or None if invalid.
     """
     now = datetime.now()
-    rel_pattern = r"(?:after|in) (\d+) (second|seconds|minute|minutes|hour|hours|day|days)"
-    rel_match = re.search(rel_pattern, time_str, re.IGNORECASE)
-    if rel_match:
-        value = int(rel_match.group(1))
-        unit = rel_match.group(2).lower()
-        if 'second' in unit:
-            delta = timedelta(seconds=value)
-        elif 'minute' in unit:
-            delta = timedelta(minutes=value)
-        elif 'hour' in unit:
-            delta = timedelta(hours=value)
-        elif 'day' in unit:
-            delta = timedelta(days=value)
+    reminder_time = dateparser.parse(time_str, settings={'PREFER_DATES_FROM': 'future'})
+    if reminder_time is None:
+        return None
+    # If the parsed time is in the past, try to adjust to the future
+    if reminder_time < now:
+        # If only time is given (e.g., "5:30pm"), dateparser may use today
+        # If so, add a day
+        if reminder_time.date() == now.date():
+            reminder_time += timedelta(days=1)
         else:
             return None
-        return now + delta
-    for fmt in ["%I:%M%p", "%H:%M"]:
-        try:
-            reminder_time = datetime.strptime(time_str, fmt)
-            reminder_time = now.replace(hour=reminder_time.hour, minute=reminder_time.minute, second=0, microsecond=0)
-            if reminder_time < now:
-                reminder_time += timedelta(days=1)
-            return reminder_time
-        except ValueError:
-            continue
-    return None
+    return reminder_time
 
 def schedule_whatsapp_reminder(recipient: str, event: str, time_str: str):
     """
@@ -63,4 +49,4 @@ def schedule_whatsapp_reminder(recipient: str, event: str, time_str: str):
     t = threading.Thread(target=reminder_thread, daemon=True)
     t.start()
 
-    return {"result": f"Reminder set for {recipient} at {reminder_time.strftime('%I:%M %p')}: {event}"}
+    return {"result": f"Reminder set successfully at {reminder_time.strftime('%I:%M %p')}: {event}"}

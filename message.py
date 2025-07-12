@@ -4,6 +4,7 @@ import os
 import requests
 import aiohttp
 import asyncio
+from whatsapp_utils.message_types import get_text_message_input
 
 # --------------------------------------------------------------
 # Load environment variables
@@ -39,18 +40,6 @@ def send_whatsapp_message_template():
     return response
 
 
-def get_text_message_input(recipient, text):
-    return json.dumps(
-        {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": recipient,
-            "type": "text",
-            "text": {"preview_url": False, "body": text},
-        }
-    )
-
-
 def send_message(data):
     headers = {
         "Content-type": "application/json",
@@ -59,7 +48,7 @@ def send_message(data):
 
     url = f"https://graph.facebook.com/{VERSION}/{PHONE_NUMBER_ID}/messages"
 
-    response = requests.post(url, data=data, headers=headers)
+    response = requests.post(url, json=data, headers=headers)
     if response.status_code == 200:
         print("Status:", response.status_code)
         print("Content-type:", response.headers["content-type"])
