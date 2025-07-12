@@ -8,7 +8,7 @@ def save_message(user_number, message, is_user):
         "is_user": is_user
     }).execute()
 
-def get_recent_chat_history(user_number, limit=10, hours=4):
+def get_recent_chat_history(user_number, limit=30, hours=4):
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     response = supabase.table("chat_history")\
         .select("id, message, is_user, timestamp")\

@@ -1,6 +1,7 @@
 from google import genai
 from google.genai import types
 from llm.tool_dispatcher import dispatch_tool_call
+from gemini_prompt import SYSTEM_PROMPT
 
 # Define the function declaration for the model
 reminder_function = {
@@ -28,19 +29,20 @@ tools = types.Tool(function_declarations=[reminder_function])
 config = types.GenerateContentConfig(tools=[tools])
 
 # Send request with function declarations
-def ai_response(recipient,user_message):
+# user_message should be a list of strings (full context)
+def ai_response(recipient, user_message):
     response = client.models.generate_content(
-    model="gemini-2.5-flash",
-    contents=user_message,
-    config=config,
-)
+        model="gemini-2.5-flash",
+        contents=user_message,
+        config=config,
+    )
     #handling the requested tools
     if response.candidates[0].content.parts[0].function_call:
         function_call = response.candidates[0].content.parts[0].function_call
         print(f"Function to call: {function_call.name}")
         print(f"Arguments: {function_call.args}")
-        result = dispatch_tool_call(function_call.name,function_call.args,recipient)
+        result = dispatch_tool_call(function_call.name, function_call.args, recipient)
         return result.get("result", str(result))
     else:
-        print("No function call found in the response.",response.text)
+        print("No function call found in the response.", response.text)
         return response.text
