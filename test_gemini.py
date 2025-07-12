@@ -40,7 +40,7 @@ def ai_response(recipient,user_message):
         print(f"Function to call: {function_call.name}")
         print(f"Arguments: {function_call.args}")
         result = dispatch_tool_call(function_call.name,function_call.args,recipient)
-        return result.result
+        return result.get("result", str(result))
     else:
         print("No function call found in the response.")
         return response.text
