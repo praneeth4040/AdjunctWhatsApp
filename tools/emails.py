@@ -31,3 +31,29 @@ def send_email_on_behalf(user_email, google_token, recipient_email, subject, bod
         return {'result': f"Email sent to {recipient_email}. Message ID: {sent_message['id']}"}
     except Exception as e:
         return {'result': f"Failed to send email: {e}"}
+
+def receive_emails(user_email, google_token, max_results=5):
+    """
+    Fetches the latest emails from the user's Gmail inbox.
+    Returns a list of emails with subject, sender, and snippet.
+    """
+    if not google_token:
+        return {'result': 'NO_TOKEN'}
+
+    creds = Credentials.from_authorized_user_info(google_token, SCOPES)
+    service = build('gmail', 'v1', credentials=creds)
+
+    try:
+        results = service.users().messages().list(userId='me', maxResults=max_results, labelIds=['INBOX']).execute()
+        messages = results.get('messages', [])
+        emails = []
+        for msg in messages:
+            msg_data = service.users().messages().get(userId='me', id=msg['id'], format='metadata', metadataHeaders=['Subject', 'From']).execute()
+            headers = {h['name']: h['value'] for h in msg_data.get('payload', {}).get('headers', [])}
+            subject = headers.get('Subject', '(No Subject)')
+            sender = headers.get('From', '(Unknown Sender)')
+            snippet = msg_data.get('snippet', '')
+            emails.append({'subject': subject, 'from': sender, 'snippet': snippet})
+        return {'result': emails}
+    except Exception as e:
+        return {'result': f"Failed to fetch emails: {e}"}

@@ -70,16 +70,46 @@ get_user_info_function = {
     }
 }
 
-# Configure the client and tools
+receive_emails_function = {
+    "name": "receive_emails",
+    "description": "Fetch the latest emails from the user's Gmail inbox. Always use the user's email and google_token obtained from the get_user_info tool. Returns a list of emails with subject, sender, and snippet.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "user_email": {
+                "type": "string",
+                "description": "The user's Gmail address."
+            },
+            "google_token": {
+                "type": "object",
+                "description": "The user's Google OAuth token as a JSON object.",
+                "nullable": True
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum number of emails to fetch (default 5).",
+                "default": 5
+            }
+        },
+        "required": ["user_email", "google_token"]
+    }
+}
+
+# Remove get_chat_history_function from tool declarations
 client = genai.Client()
-tools = types.Tool(function_declarations=[reminder_function, send_email_function, get_user_info_function])
+tools = types.Tool(function_declarations=[reminder_function, send_email_function, get_user_info_function, receive_emails_function])
 config = types.GenerateContentConfig(tools=[tools])
 
 # Send request with function declarations
 # user_message should be a list of strings (full context)
 def ai_response(recipient, user_message):
-    # Build context with only system prompt and current user message
-    context = [SYSTEM_PROMPT, f"User: {user_message} mobile Number:{recipient}"]
+    # Fetch recent chat history and build context
+    history = get_recent_chat_history(recipient, limit=50, hours=4) or []
+    history_lines = []
+    for msg in history:
+        prefix = "User:" if msg.get("is_user") else "Bot:"
+        history_lines.append(f"{prefix} {msg.get('message')}")
+    context = [SYSTEM_PROMPT] + history_lines + [f"User: {user_message}"]
 
     while True:
         response = client.models.generate_content(

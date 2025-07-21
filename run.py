@@ -11,8 +11,10 @@ import os
 from google_auth_oauthlib.flow import Flow
 import json
 from googleapiclient.discovery import build
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 VERIFY_TOKEN = 'yoyo'  # Change this to your actual verify token
 
@@ -62,10 +64,18 @@ def authorize():
     mobile_number = request.args.get('mobile_number')
     if mobile_number:
         session['mobile_number'] = mobile_number
+    # Debug print statements to check credentials file path and contents
+    print("CREDENTIALS_FILE path:", CREDENTIALS_FILE)
+    try:
+        with open(CREDENTIALS_FILE, 'r') as f:
+            creds_content = f.read()
+            print("CREDENTIALS_FILE contents:", creds_content)
+    except Exception as e:
+        print("Error reading CREDENTIALS_FILE:", e)
     flow = Flow.from_client_secrets_file(
         CREDENTIALS_FILE,
         scopes=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True)
+        redirect_uri=url_for('oauth2callback', _external=True, _scheme='https')
     )
     authorization_url, state = flow.authorization_url(
         access_type='offline',
@@ -81,7 +91,7 @@ def oauth2callback():
         CREDENTIALS_FILE,
         scopes=SCOPES,
         state=state,
-        redirect_uri=url_for('oauth2callback', _external=True)
+        redirect_uri=url_for('oauth2callback', _external=True, _scheme='https')
     )
     flow.fetch_token(authorization_response=request.url)
     credentials = flow.credentials
