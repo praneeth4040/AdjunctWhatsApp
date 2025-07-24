@@ -4,7 +4,7 @@ from llm.tool_dispatcher import dispatch_tool_call
 from gemini_prompt import SYSTEM_PROMPT
 from chat_db import get_recent_chat_history, save_message
 
-# Define the function declaration for the model
+# Define function declarations for tools
 reminder_function = {
     "name": "set_reminder",
     "description": "Set a reminder for the user. Supports absolute and relative times.",
@@ -26,7 +26,7 @@ reminder_function = {
 
 send_email_function = {
     "name": "send_email",
-    "description": "Send an email on behalf of the user using their connected Gmail account. Always use the user's email and google_token obtained from the get_user_info tool. Always generate the subject and body from the user's request unless otherwise specified. If google_token is missing, this tool will return a Gmail authorization URL for the user to connect their account. If the token is present, proceed to send the email. Only ask the user for more details if the request is truly ambiguous or missing essential information.",
+    "description": "Send an email on behalf of the user using their connected Gmail account.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -45,11 +45,11 @@ send_email_function = {
             },
             "subject": {
                 "type": "string",
-                "description": "The subject of the email.Generate the subject of email based on the context given by the user"
+                "description": "The subject of the email."
             },
             "body": {
                 "type": "string",
-                "description": "The body content of the email.Generate the body of the email based on the given context by the user"
+                "description": "The body content of the email."
             }
         },
         "required": ["recipient_email", "subject", "body"]
@@ -58,7 +58,7 @@ send_email_function = {
 
 get_user_info_function = {
     "name": "get_user_info",
-    "description": "Get user details from the database by mobile number. This tool returns the user's name, email, google_token (for Gmail access), and other available user information. The system will automatically provide the sender's mobile number; you do not need to ask the user for it.",
+    "description": "Get user details from the database by mobile number.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -72,7 +72,7 @@ get_user_info_function = {
 
 receive_emails_function = {
     "name": "receive_emails",
-    "description": "Fetch the latest emails from the user's Gmail inbox. Always use the user's email and google_token obtained from the get_user_info tool. Returns a list of emails with subject, sender, and snippet.",
+    "description": "Fetch the latest emails from the user's Gmail inbox.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -95,20 +95,41 @@ receive_emails_function = {
     }
 }
 
-# Remove get_chat_history_function from tool declarations
+web_search_function = {
+    "name": "web_search",
+    "description": "Perform a web search and return a summary with relevant links.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query to look up on the web."
+            }
+        },
+        "required": ["query"]
+    }
+}
+
+# Gemini tool configuration
 client = genai.Client()
-tools = types.Tool(function_declarations=[reminder_function, send_email_function, get_user_info_function, receive_emails_function])
+tools = types.Tool(function_declarations=[
+    reminder_function,
+    send_email_function,
+    get_user_info_function,
+    receive_emails_function,
+    web_search_function  # ✅ include web search here
+])
 config = types.GenerateContentConfig(tools=[tools])
 
-# Send request with function declarations
-# user_message should be a list of strings (full context)
+# AI response generation
 def ai_response(recipient, user_message):
-    # Fetch recent chat history and build context
     history = get_recent_chat_history(recipient, limit=50, hours=4) or []
     history_lines = []
+
     for msg in history:
         prefix = "User:" if msg.get("is_user") else "Bot:"
         history_lines.append(f"{prefix} {msg.get('message')}")
+
     context = [SYSTEM_PROMPT] + history_lines + [f"User: {user_message}"]
 
     while True:
@@ -118,11 +139,13 @@ def ai_response(recipient, user_message):
             config=config,
         )
         part = response.candidates[0].content.parts[0]
+
         if hasattr(part, "function_call") and part.function_call:
             function_call = part.function_call
             tool_call_msg = f"Tool call: {function_call.name}({function_call.args})"
             print(tool_call_msg)
             context.append(tool_call_msg)
+
             result = dispatch_tool_call(function_call.name, function_call.args, recipient)
             tool_result_msg = f"Tool result: {result['result']}"
             print(tool_result_msg)
