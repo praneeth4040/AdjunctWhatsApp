@@ -35,3 +35,5 @@ def search_google(query):
 
     except Exception as e:
         return f"❌ Exception: {str(e)}"
+
+
