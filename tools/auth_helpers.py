@@ -1,7 +1,7 @@
 from whatsapp_utils.message_types import get_cta_url_message_input
 from message import send_message
 
-def prompt_gmail_authorization(mobile_number):
+def prompt_google_authorization(mobile_number):
     oauth_url = f"https://outgoing-stable-gull.ngrok-free.app/authorize?mobile_number={mobile_number}"
     payload = get_cta_url_message_input(
         recipient=mobile_number,

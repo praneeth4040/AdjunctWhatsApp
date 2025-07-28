@@ -13,7 +13,7 @@ def dispatch_tool_call(name, args, recipient):
     elif name == "send_email":
         google_token = args.get("google_token")
         if not google_token:
-            return prompt_gmail_authorization(recipient)
+            return prompt_google_authorization(recipient)
         return send_email_on_behalf(
             user_email=args["user_email"],
             google_token=google_token,
@@ -25,7 +25,7 @@ def dispatch_tool_call(name, args, recipient):
     elif name == "receive_emails":
         google_token = args.get("google_token")
         if not google_token:
-            return prompt_gmail_authorization(recipient)
+            return prompt_google_authorization(recipient)
         max_results = args.get("max_results", 5)
         return receive_emails(
             user_email=args["user_email"],
@@ -47,6 +47,10 @@ def dispatch_tool_call(name, args, recipient):
         if not query:
             return {"result": "No query provided."}
         return {"result": search_google(query)}
+    
+    elif name == "google_authorisation":
+        return prompt_google_authorization(recipient)
+
 
     else:
         return {"result": f"Unknown tool: {name}"}
