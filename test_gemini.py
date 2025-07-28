@@ -121,8 +121,7 @@ google_authorisation_function = {
                 "type": "string",
                 "description": "The user's mobile number for sending the authorization message."
             }
-        },
-        "required": ["mobile_number"]
+        }
     }
 }
 
