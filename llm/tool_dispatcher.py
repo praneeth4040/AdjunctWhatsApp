@@ -48,7 +48,7 @@ def dispatch_tool_call(name, args, recipient):
             return {"result": "No query provided."}
         return {"result": search_google(query)}
     
-    elif name == "google_authorisation":
+    elif name == "prompt_google_authorization":
         return prompt_google_authorization(recipient)
 
 
