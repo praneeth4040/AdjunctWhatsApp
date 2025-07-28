@@ -78,9 +78,10 @@ def authorize():
         redirect_uri=url_for('oauth2callback', _external=True, _scheme='https')
     )
     authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true'
-    )
+    access_type='offline',
+    include_granted_scopes='true',
+    prompt='consent'
+)
     session['state'] = state
     return redirect(authorization_url)
 

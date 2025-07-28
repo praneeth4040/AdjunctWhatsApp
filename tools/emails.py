@@ -11,7 +11,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
     'openid'
-]
+]   
 
 def send_email_on_behalf(user_email, google_token, recipient_email, subject, body):
     if not google_token:
