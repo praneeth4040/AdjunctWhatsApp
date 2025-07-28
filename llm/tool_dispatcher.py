@@ -1,7 +1,7 @@
 from tools.reminder import schedule_whatsapp_reminder
 from tools.emails import send_email_on_behalf, receive_emails
 from tools.user_info import get_user_info
-from tools.auth_helpers import prompt_gmail_authorization
+from tools.auth_helpers import prompt_google_authorization
 from chat_db import get_recent_chat_history
 from app import search_google  # make sure this is correct
 

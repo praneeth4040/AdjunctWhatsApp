@@ -3,7 +3,7 @@ from google.genai import types
 from llm.tool_dispatcher import dispatch_tool_call
 from gemini_prompt import SYSTEM_PROMPT
 from chat_db import get_recent_chat_history, save_message
-from auth_helpers import prompt_google_authorization
+
 
 # Define function declarations for tools
 reminder_function = {
@@ -135,7 +135,7 @@ tools = types.Tool(function_declarations=[
     get_user_info_function,
     receive_emails_function,
     web_search_function ,
-    google_authorization_function# ✅ include web search here
+    google_authorisation_function# ✅ include web search here
 ])
 config = types.GenerateContentConfig(tools=[tools])
 
