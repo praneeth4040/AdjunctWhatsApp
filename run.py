@@ -45,6 +45,7 @@ def webhook():
         try:
             msg = extract_user_message(request.json)
             sender = extract_sender(request.json)
+            prnt(sender)
             insertUser(sender)
             save_message(sender, msg, True)
             # Only pass the current message and sender to ai_response
@@ -78,10 +79,9 @@ def authorize():
         redirect_uri=url_for('oauth2callback', _external=True, _scheme='https')
     )
     authorization_url, state = flow.authorization_url(
-    access_type='offline',
-    include_granted_scopes='true',
-    prompt='consent'
-)
+        access_type='offline',
+        include_granted_scopes='true'
+    )
     session['state'] = state
     return redirect(authorization_url)
 
@@ -113,12 +113,12 @@ def oauth2callback():
 
     return 'Authorization complete! You can close this window.'
 
-# @app.route('/healthcheck')
-# def healthcheck():
-#     try:
-#         return "the server is active"
-#     except Exception as e:
-#         return e
+@app.route('/healthcheck')
+def healthcheck():
+    try:
+        return "the server is active"
+    except Exception as e:
+        return e
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
