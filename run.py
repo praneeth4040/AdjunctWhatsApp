@@ -45,7 +45,7 @@ def webhook():
         try:
             msg = extract_user_message(request.json)
             sender = extract_sender(request.json)
-            prnt(sender)
+            print(sender)
             insertUser(sender)
             save_message(sender, msg, True)
             # Only pass the current message and sender to ai_response
@@ -80,7 +80,8 @@ def authorize():
     )
     authorization_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true'
+        include_granted_scopes='true',
+        prompt='consent'
     )
     session['state'] = state
     return redirect(authorization_url)
