@@ -2,7 +2,7 @@ from whatsapp_utils.message_types import get_cta_url_message_input
 from message import send_message
 
 def prompt_google_authorization(mobile_number):
-    oauth_url = f"https://wondrous-vast-koala.ngrok-free.app/authorize?mobile_number={mobile_number}"
+    oauth_url = f"https://adjunctwhatsappbot-1111.onrender.com/authorize?mobile_number={mobile_number}"
     payload = get_cta_url_message_input(
         recipient=mobile_number,
         image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/2560px-Gmail_icon_%282020%29.svg.png",
