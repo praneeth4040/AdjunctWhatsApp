@@ -2,7 +2,7 @@ from google import genai
 from google.genai import types
 from llm.tool_dispatcher import dispatch_tool_call
 from gemini_prompt import SYSTEM_PROMPT
-from chat_db import get_recent_chat_history, save_message
+import json
 
 
 # Define function declarations for tools
@@ -125,7 +125,6 @@ google_authorisation_function = {
     }
 }
 
-
 # Gemini tool configuration
 client = genai.Client()
 tools = types.Tool(function_declarations=[
@@ -133,39 +132,50 @@ tools = types.Tool(function_declarations=[
     send_email_function,
     get_user_info_function,
     receive_emails_function,
-    web_search_function ,
-    google_authorisation_function# ✅ include web search here
+    web_search_function,
+    google_authorisation_function
 ])
 config = types.GenerateContentConfig(tools=[tools])
 
 # AI response generation
+
 def ai_response(recipient, user_message):
-    history = get_recent_chat_history(recipient, limit=50, hours=4) or []
-    history_lines = []
+    """
+    Generates an AI response using Gemini, supporting robust multi-tool chaining.
+    - Uses the system prompt and current user message for context.
+    - Handles multi-step tool calls with a max-iteration safeguard.
+    - Includes error handling for Gemini and tool call failures.
+    """
+    MAX_ITERATIONS = 5
+    
+    # Use only system prompt and current message (no database dependencies)
+    context = [SYSTEM_PROMPT, f"User: {user_message}"]
+    
+    try:
+        for _ in range(MAX_ITERATIONS):
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=context,
+                config=config,
+            )
+            part = response.candidates[0].content.parts[0]
 
-    for msg in history:
-        prefix = "User:" if msg.get("is_user") else "Bot:"
-        history_lines.append(f"{prefix} {msg.get('message')}")
-
-    context = [SYSTEM_PROMPT] + history_lines + [f"User: {user_message}"]
-
-    while True:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=context,
-            config=config,
-        )
-        part = response.candidates[0].content.parts[0]
-
-        if hasattr(part, "function_call") and part.function_call:
-            function_call = part.function_call
-            tool_call_msg = f"Tool call: {function_call.name}({function_call.args})"
-            print(tool_call_msg)
-            context.append(tool_call_msg)
-
-            result = dispatch_tool_call(function_call.name, function_call.args, recipient)
-            tool_result_msg = f"Tool result: {result['result']}"
-            print(tool_result_msg)
-            context.append(tool_result_msg)
-        else:
-            return response.text
+            if hasattr(part, "function_call") and part.function_call:
+                function_call = part.function_call
+                tool_call_msg = f"Tool call: {function_call.name}({function_call.args})"
+                print(tool_call_msg)
+                context.append(tool_call_msg)
+                try:
+                    result = dispatch_tool_call(function_call.name, function_call.args, recipient)
+                    tool_result_msg = f"Tool result: {result['result']}"
+                except Exception as tool_err:
+                    tool_result_msg = f"Tool result: Error - {str(tool_err)}"
+                print(tool_result_msg)
+                context.append(tool_result_msg)
+            else:
+                return response.text
+        # If max iterations reached without a final response
+        return "Sorry, I couldn't complete your request after several steps. Please try again."
+    except Exception as e:
+        print(f"ai_response error: {str(e)}")
+        return "Sorry, something went wrong while processing your request."

@@ -3,10 +3,8 @@ from webhook_server import extract_user_message, extract_sender
 from test_gemini import ai_response
 from message import send_message
 from whatsapp_utils.message_types import get_text_message_input
-from dbfunction import insertUser, updateUser
-from chat_db import save_message, get_recent_chat_history
-from memory_db import store_user_memory, get_user_memories
 from gemini_prompt import SYSTEM_PROMPT
+from database import db
 import os
 from google_auth_oauthlib.flow import Flow
 import json
@@ -43,22 +41,42 @@ def webhook():
             return 'Verification token mismatch', 403
     elif request.method == 'POST':
         try:
-            msg = extract_user_message(request.json)
-            sender = extract_sender(request.json)
-            print(sender)
-            insertUser(sender)
-            save_message(sender, msg, True)
-            # Only pass the current message and sender to ai_response
-            ai_reponse = ai_response(sender, msg)
-            save_message(sender, ai_reponse, False)
-            if isinstance(ai_reponse, dict):
-                message_text = str(ai_reponse.get("result", str(ai_reponse)))
+            # Validate JSON payload
+            if not request.is_json:
+                return jsonify({'error': 'Invalid content type, JSON required.'}), 400
+            data = request.get_json(force=True, silent=True)
+            if not data:
+                return jsonify({'error': 'Empty or invalid JSON payload.'}), 400
+
+            # Extract message and sender robustly
+            from webhook_server import extract_user_message, extract_sender
+            msg = extract_user_message(data)
+            sender = extract_sender(data)
+            if not msg or not sender:
+                return jsonify({'error': 'Missing message or sender in payload.'}), 400
+
+            # Ensure user exists in database (create if not exists)
+            user_result = db.ensure_user_exists(sender)
+            if not user_result["success"]:
+                print(f"Database error for user {sender}: {user_result.get('error', 'Unknown error')}")
+                # Continue with AI response even if database fails
             else:
-                message_text = str(ai_reponse)
-            send_message(get_text_message_input(sender, message_text))
+                action = user_result.get("action", "unknown")
+                if action == "created_user":
+                    print(f"New user created: {sender}")
+                elif action == "existing_user":
+                    print(f"Existing user updated: {sender}")
+
+            # Call AI response
+            from test_gemini import ai_response
+            ai_result = ai_response(sender, msg)
+            
+            # Only return the AI result (do not echo sensitive info)
+            return jsonify({'result': ai_result}), 200
         except Exception as e:
-            print(e)
-        return jsonify({'status': 'success'}), 200
+            # Log error securely (do not leak sensitive info)
+            print(f"Webhook error: {str(e)}")
+            return jsonify({'error': 'Internal server error.'}), 500
 
 @app.route('/authorize')
 def authorize():
@@ -109,8 +127,12 @@ def oauth2callback():
     if not mobile_number:
         return 'Mobile number not found in session. Please start the OAuth flow from WhatsApp.', 400
 
-    # Update user in DB
-    updateUser(mobile_number, json.loads(credentials.to_json()), name, email)
+    # Update user in database with Google OAuth info
+    update_result = db.update_user(mobile_number, name=name, email=email)
+    if update_result["success"]:
+        print(f"User {mobile_number} updated with Google OAuth info")
+    else:
+        print(f"Failed to update user {mobile_number}: {update_result.get('error', 'Unknown error')}")
 
     return 'Authorization complete! You can close this window.'
 
