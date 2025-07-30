@@ -59,3 +59,22 @@ def send_message(data):
         print(response.text)
         return response
 
+def send_read_and_typing_indicator(message_id):
+    url = f"https://graph.facebook.com/{VERSION}/{PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": message_id,
+        "typing_indicator": {
+            "type": "text"  # currently only "text" is supported
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+    print(f"[READ + TYPING] Status: {response.status_code} | Body: {response.text}")
+    return response
+

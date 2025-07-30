@@ -1,7 +1,8 @@
+from re import M
 from flask import Flask, request, abort, jsonify, session, redirect, url_for
-from webhook_server import extract_user_message, extract_sender
+from webhook_server import extract_user_message, extract_sender ,extract_media_info
 from test_gemini import ai_response
-from message import send_message
+from message import send_message, send_read_and_typing_indicator
 from whatsapp_utils.message_types import get_text_message_input
 from gemini_prompt import SYSTEM_PROMPT
 from database import db
@@ -47,14 +48,17 @@ def webhook():
             data = request.get_json(force=True, silent=True)
             if not data:
                 return jsonify({'error': 'Empty or invalid JSON payload.'}), 400
-
-            # Extract message and sender robustly
-            from webhook_server import extract_user_message, extract_sender
+            # extract message and sender and media info
             msg = extract_user_message(data)
             sender = extract_sender(data)
-            if not msg or not sender:
+            media_info = extract_media_info(data["entry"][0]["changes"][0]["value"]["messages"][0])
+            if (not msg and not media_info )or not sender :
+                print("Missing message or sender in payload.")
                 return jsonify({'error': 'Missing message or sender in payload.'}), 400
-
+            if media_info:
+                print("Media message detected.")
+                send_message(get_text_message_input(sender, "I'm sorry, I can't process media messages yet."))
+                return jsonify({'result': media_info}), 200
             # Ensure user exists in database (create if not exists)
             user_result = db.ensure_user_exists(sender)
             if not user_result["success"]:
@@ -67,11 +71,16 @@ def webhook():
                 elif action == "existing_user":
                     print(f"Existing user updated: {sender}")
 
+            # mark message as read and send typing status
+            send_read_and_typing_indicator(data["entry"][0]["changes"][0]["value"]["messages"][0]["id"])
+
             # Call AI response
-            from test_gemini import ai_response
             ai_result = ai_response(sender, msg)
+            db.store_message(sender, "user", msg)
+            db.store_message(sender, "bot", ai_result)
             
-            # Only return the AI result (do not echo sensitive info)
+            # send message to user
+            send_message(get_text_message_input(sender, ai_result))
             return jsonify({'result': ai_result}), 200
         except Exception as e:
             # Log error securely (do not leak sensitive info)

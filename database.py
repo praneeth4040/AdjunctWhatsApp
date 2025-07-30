@@ -190,6 +190,13 @@ class DatabaseManager:
             print(f"Error ensuring user exists: {e}")
             return {"success": False, "error": str(e)}
 
+    def store_message(self, mobile_number, sender_type, message):
+        self.supabase.table('conversation_history').insert({
+            'mobile_number': mobile_number,
+            'sender_type': sender_type,
+            'message': message
+        }).execute()
+
 # Global database instance
 db = DatabaseManager()
 
