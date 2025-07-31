@@ -48,6 +48,9 @@ def webhook():
             data = request.get_json(force=True, silent=True)
             if not data:
                 return jsonify({'error': 'Empty or invalid JSON payload.'}), 400
+            # mark message as read and send typing status
+            send_read_and_typing_indicator(data["entry"][0]["changes"][0]["value"]["messages"][0]["id"])
+
             # extract message and sender and media info
             msg = extract_user_message(data)
             sender = extract_sender(data)
@@ -70,9 +73,6 @@ def webhook():
                     print(f"New user created: {sender}")
                 elif action == "existing_user":
                     print(f"Existing user updated: {sender}")
-
-            # mark message as read and send typing status
-            send_read_and_typing_indicator(data["entry"][0]["changes"][0]["value"]["messages"][0]["id"])
 
             # Call AI response
             ai_result = ai_response(sender, msg)
