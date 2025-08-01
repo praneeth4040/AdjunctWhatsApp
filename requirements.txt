@@ -7,6 +7,7 @@ supabase
 dateparser
 werkzeug
 
+chromadb
 google-auth
 google-auth-oauthlib
 google-api-python-client
