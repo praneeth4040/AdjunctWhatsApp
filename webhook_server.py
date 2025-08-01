@@ -1,11 +1,9 @@
 from flask import Flask, request
 from whatsapp_utils.message_types import get_text_message_input
 from message import send_message
-from test_gemini import ai_response
 import json
 import requests
 
-app = Flask(__name__)
 
 def extract_user_message(data):
     try:
@@ -36,7 +34,6 @@ def extract_sender(data):
         return None
 
 def extract_media_info(message: dict):
-    print("the media message is ",message)
     media_types = ["image", "document", "voice"]
     
     if "type" not in message or message["type"] not in media_types:
@@ -58,3 +55,13 @@ def extract_media_info(message: dict):
         "timestamp": message.get("timestamp"),
     }
 
+def truncate_history(history, max_words=5000):
+        total = 0
+        trimmed = []
+        for message in reversed(history):
+            word_count = len(message["message"].split())
+            if total + word_count > max_words:
+                break
+            trimmed.insert(0, message)
+            total += word_count
+        return trimmed

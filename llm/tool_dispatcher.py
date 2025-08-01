@@ -1,6 +1,6 @@
 from tools.reminder import schedule_whatsapp_reminder
 from tools.emails import send_email_on_behalf, receive_emails
-from tools.user_info import get_user_info
+from tools.user_info import get_user_info, get_user_chat_summary
 from tools.auth_helpers import prompt_google_authorization
 from app import search_google
 from typing import Dict, Any, Optional
@@ -103,6 +103,8 @@ def dispatch_tool_call(name: str, args: Dict[str, Any], recipient: str) -> Dict[
         elif name == "prompt_google_authorization":
             return prompt_google_authorization(recipient)
         
+        elif name == "get_user_chat_summary":
+            return get_user_chat_summary(recipient)
         else:
             return {"result": f"Unknown tool: {name}. Available tools: set_reminder, send_email, receive_emails, get_user_info, web_search, prompt_google_authorization"}
     

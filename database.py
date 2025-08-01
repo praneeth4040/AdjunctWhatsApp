@@ -197,6 +197,22 @@ class DatabaseManager:
             'message': message
         }).execute()
 
+    def get_user_chats(self, mobile_number: str) -> List[Dict[str, Any]]:
+        """Get the user's chat history from the conversation_history table."""
+        if not self.is_connected():
+            print("Database not connected.")
+            return []
+    
+        try:
+            response = self.supabase.table('conversation_history').select('sender_type, message, created_at').eq('mobile_number', mobile_number).order(column="created_at", desc=False).execute()
+
+            chats = response.data if response.data else []
+            return chats
+    
+        except Exception as e:
+            print(f"Error getting user chats for {mobile_number}: {e}")
+            return []
+
 # Global database instance
 db = DatabaseManager()
 
