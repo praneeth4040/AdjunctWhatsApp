@@ -1,8 +1,10 @@
 from google import genai
-from google.genai import types
+from google.genai import types 
 from llm.tool_dispatcher import dispatch_tool_call
 from gemini_prompt import SYSTEM_PROMPT
-from chat_db import get_recent_chat_history, save_message
+import json
+from database import db
+from webhook_server import truncate_history
 
 
 # Define function declarations for tools
@@ -124,6 +126,20 @@ google_authorisation_function = {
         }
     }
 }
+#this is at present not being used since chatContinuity has been implemented
+get_user_chat_summary_function = {
+    "name": "get_user_chat_summary",
+    "description": "Retrieve the user's previous conversation history, optionally summarized.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "mobile_number": {
+                "type": "string",
+                "description": "The user's mobile number used to identify their session."
+            }
+        }
+    }
+}
 
 
 # Gemini tool configuration
@@ -133,39 +149,59 @@ tools = types.Tool(function_declarations=[
     send_email_function,
     get_user_info_function,
     receive_emails_function,
-    web_search_function ,
-    google_authorisation_function# ✅ include web search here
+    web_search_function,
+    google_authorisation_function,
 ])
-config = types.GenerateContentConfig(tools=[tools])
+config = types.GenerateContentConfig(tools=[tools],system_instruction=SYSTEM_PROMPT)
 
 # AI response generation
+
 def ai_response(recipient, user_message):
-    history = get_recent_chat_history(recipient, limit=50, hours=4) or []
-    history_lines = []
+    """
+    Generates an AI response using Gemini, supporting robust multi-tool chaining.
+    - Uses the system prompt and current user message for context.
+    - Handles multi-step tool calls with a max-iteration safeguard.
+    - Includes error handling for Gemini and tool call failures.
+    """
+    MAX_ITERATIONS = 5
+    chat_history = db.get_user_chats(recipient) #this returns a list of dict which contains all the messages
+    conise_history = truncate_history(chat_history)
+    context = []
+    #appending the history to context
+    for msg in conise_history:
+        role = "user" if msg["sender_type"] == "user" else "model"
+        context.append(types.Content(role=role, parts=[types.Part(text=msg["message"])]))
+    
+    #adding the present userPrompt to the context
+    context.append(types.Content(role="user",parts=[types.Part(text=user_message)]))
+    
+    try:
+        for _ in range(MAX_ITERATIONS):
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=context,
+                config=config,
+            )
+            part = response.candidates[0].content.parts[0]
 
-    for msg in history:
-        prefix = "User:" if msg.get("is_user") else "Bot:"
-        history_lines.append(f"{prefix} {msg.get('message')}")
-
-    context = [SYSTEM_PROMPT] + history_lines + [f"User: {user_message}"]
-
-    while True:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=context,
-            config=config,
-        )
-        part = response.candidates[0].content.parts[0]
-
-        if hasattr(part, "function_call") and part.function_call:
-            function_call = part.function_call
-            tool_call_msg = f"Tool call: {function_call.name}({function_call.args})"
-            print(tool_call_msg)
-            context.append(tool_call_msg)
-
-            result = dispatch_tool_call(function_call.name, function_call.args, recipient)
-            tool_result_msg = f"Tool result: {result['result']}"
-            print(tool_result_msg)
-            context.append(tool_result_msg)
-        else:
-            return response.text
+            if hasattr(part, "function_call") and part.function_call:
+                function_call = part.function_call
+                tool_call_msg = f"Tool call: {function_call.name}({function_call.args})"
+                print(tool_call_msg)
+                context.append(types.Content(role="model", parts=[types.Part(function_call=function_call)]))
+                try:
+                    result = dispatch_tool_call(function_call.name, function_call.args, recipient)
+                    tool_result_msg = f"Tool result: {result['result']}"
+                    print(tool_result_msg)
+                    context.append(types.Content(role="tool", parts=[types.Part(function_response=types.FunctionResponse(name=function_call.name, response=result))]))
+                except Exception as tool_err:
+                    tool_result_msg = f"Tool result: Error - {str(tool_err)}"
+                    print(tool_result_msg)
+                    context.append(types.Content(role="tool", parts=[types.Part(text=tool_result_msg)]))
+            else:
+                return response.text
+        # If max iterations reached without a final response
+        return "Sorry, I couldn't complete your request after several steps. Please try again."
+    except Exception as e:
+        print(f"ai_response error: {str(e)}")
+        return "Sorry, something went wrong while processing your request."
