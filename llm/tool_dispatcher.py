@@ -98,7 +98,7 @@ def dispatch_tool_call(name: str, args: Dict[str, Any], recipient: str) -> Dict[
             if len(query) > 500:  # Limit query length
                 query = query[:500]
             
-            return {"result": search_google(query)}
+            return {"result": search_google_with_serpapi(query)}
         
         elif name == "prompt_google_authorization":
             return prompt_google_authorization(recipient)
