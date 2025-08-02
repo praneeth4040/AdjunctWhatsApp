@@ -86,37 +86,41 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error getting user: {e}")
             return None
-    
+
     def update_user(self, mobile_number: str, **kwargs) -> Dict[str, Any]:
         """Update user information."""
         if not self.is_connected():
             return {"success": False, "error": "Database not connected"}
-        
+    
         try:
-            # Only allow updating specific fields
-            valid_fields = ['name', 'email']
+            # Allow updating name, email, google_token
+            valid_fields = ['name', 'email', 'google_token']
             update_data = {}
-            
+        
             for field, value in kwargs.items():
                 if field in valid_fields and value is not None:
                     update_data[field] = value
-            
+        
             if not update_data:
                 return {"success": False, "error": "No valid fields to update"}
-            
+        
             # Add last_updated timestamp
             update_data['last_updated'] = datetime.utcnow().isoformat()
-            
-            response = self.supabase.table('users').update(update_data).eq('mobile_number', mobile_number).execute()
-            
+        
+            response = self.supabase.table('users')\
+                .update(update_data)\
+                .eq('mobile_number', mobile_number)\
+                .execute()
+        
             if response.data:
                 return {"success": True, "data": response.data[0]}
             else:
                 return {"success": False, "error": "User not found or update failed"}
-                
+            
         except Exception as e:
             print(f"Error updating user: {e}")
             return {"success": False, "error": str(e)}
+
     
     def update_last_talked(self, mobile_number: str) -> Dict[str, Any]:
         """Update the last_talked timestamp for a user."""
@@ -248,4 +252,24 @@ CREATE TRIGGER update_users_last_updated
     BEFORE UPDATE ON users 
     FOR EACH ROW 
     EXECUTE FUNCTION update_last_updated_column();
+
+
+--
+CREATE TABLE conversation_history (
+    id SERIAL PRIMARY KEY,
+    mobile_number VARCHAR(20) NOT NULL,
+    sender_type VARCHAR(10) NOT NULL CHECK (sender_type IN ('user', 'bot')),
+    message TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Foreign key constraint to link to users table
+    CONSTRAINT fk_mobile_number FOREIGN KEY (mobile_number) REFERENCES users(mobile_number) ON DELETE CASCADE
+);
+
+
+--
+
+CREATE INDEX idx_conversation_mobile_number ON conversation_history(mobile_number);
+CREATE INDEX idx_conversation_created_at ON conversation_history(created_at);
+
 """ 

@@ -83,6 +83,14 @@ ACT AS A MULTI-FUNCTIONAL PERSONAL ASSISTANT THAT:
 
 ### FEW-SHOT EXAMPLES ###
 
+**USER:** Hey can you can i please know the email I am connected with
+
+**RESPONSE**
+- [INVOKE `get_user_info`]
+- CHECK `google_token`
+- IF MISSING → CALL `google_authorization`
+- IF PRESENT → Your are not connected your any google account with me , we have only your mobile number which is +91 9876543210
+
 **USER:** hey can you send a mail to my boss about the meeting tomorrow?
 
 **RESPONSE:**
