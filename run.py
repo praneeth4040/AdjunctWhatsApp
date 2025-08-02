@@ -102,14 +102,22 @@ def oauth2callback():
     user_info = service.userinfo().get().execute()
     email = user_info['email']
     name = user_info.get('name', '')
+    google_token = json.loads(credentials.to_json())
 
     # Get mobile_number from session
     mobile_number = session.get('mobile_number')
     if not mobile_number:
         return 'Mobile number not found in session. Please start the OAuth flow from WhatsApp.', 400
 
-    # Update user in DB
-    updateUser(mobile_number, json.loads(credentials.to_json()), name, email)
+
+    # Update user in database with Google OAuth info
+    update_result = db.update_user(mobile_number, name=name, email=email,google_token=google_token)
+    if update_result["success"]:
+        print(f"User {mobile_number} updated with Google OAuth info")
+    else:
+        print(f"Failed to update user {mobile_number}: {update_result.get('error', 'Unknown error')}")
+
+  
 
     return 'Authorization complete! You can close this window.'
 

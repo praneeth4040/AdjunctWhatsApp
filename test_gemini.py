@@ -1,8 +1,10 @@
 from google import genai
-from google.genai import types
+from google.genai import types 
 from llm.tool_dispatcher import dispatch_tool_call
 from gemini_prompt import SYSTEM_PROMPT
 import json
+from database import db
+from webhook_server import truncate_history
 
 
 # Define function declarations for tools
@@ -124,6 +126,21 @@ google_authorisation_function = {
         }
     }
 }
+#this is at present not being used since chatContinuity has been implemented
+get_user_chat_summary_function = {
+    "name": "get_user_chat_summary",
+    "description": "Retrieve the user's previous conversation history, optionally summarized.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "mobile_number": {
+                "type": "string",
+                "description": "The user's mobile number used to identify their session."
+            }
+        }
+    }
+}
+
 
 # Gemini tool configuration
 client = genai.Client()
@@ -133,9 +150,9 @@ tools = types.Tool(function_declarations=[
     get_user_info_function,
     receive_emails_function,
     web_search_function,
-    google_authorisation_function
+    google_authorisation_function,
 ])
-config = types.GenerateContentConfig(tools=[tools])
+config = types.GenerateContentConfig(tools=[tools],system_instruction=SYSTEM_PROMPT)
 
 # AI response generation
 
@@ -147,9 +164,16 @@ def ai_response(recipient, user_message):
     - Includes error handling for Gemini and tool call failures.
     """
     MAX_ITERATIONS = 5
+    chat_history = db.get_user_chats(recipient) #this returns a list of dict which contains all the messages
+    conise_history = truncate_history(chat_history)
+    context = []
+    #appending the history to context
+    for msg in conise_history:
+        role = "user" if msg["sender_type"] == "user" else "model"
+        context.append(types.Content(role=role, parts=[types.Part(text=msg["message"])]))
     
-    # Use only system prompt and current message (no database dependencies)
-    context = [SYSTEM_PROMPT, f"User: {user_message}"]
+    #adding the present userPrompt to the context
+    context.append(types.Content(role="user",parts=[types.Part(text=user_message)]))
     
     try:
         for _ in range(MAX_ITERATIONS):
@@ -164,14 +188,16 @@ def ai_response(recipient, user_message):
                 function_call = part.function_call
                 tool_call_msg = f"Tool call: {function_call.name}({function_call.args})"
                 print(tool_call_msg)
-                context.append(tool_call_msg)
+                context.append(types.Content(role="model", parts=[types.Part(function_call=function_call)]))
                 try:
                     result = dispatch_tool_call(function_call.name, function_call.args, recipient)
                     tool_result_msg = f"Tool result: {result['result']}"
+                    print(tool_result_msg)
+                    context.append(types.Content(role="tool", parts=[types.Part(function_response=types.FunctionResponse(name=function_call.name, response=result))]))
                 except Exception as tool_err:
                     tool_result_msg = f"Tool result: Error - {str(tool_err)}"
-                print(tool_result_msg)
-                context.append(tool_result_msg)
+                    print(tool_result_msg)
+                    context.append(types.Content(role="tool", parts=[types.Part(text=tool_result_msg)]))
             else:
                 return response.text
         # If max iterations reached without a final response
