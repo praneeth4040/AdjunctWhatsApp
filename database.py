@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 import json
 from supabase import create_client, Client
+from datetime import datetime
 
 class DatabaseManager:
     """Manages all database operations using Supabase."""
@@ -86,8 +87,6 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error getting user: {e}")
             return None
-    
-    from datetime import datetime
 
     def update_user(self, mobile_number: str, **kwargs) -> Dict[str, Any]:
         """Update user information."""

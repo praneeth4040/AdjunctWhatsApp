@@ -33,6 +33,7 @@ def get_user_info(mobile_number: str) -> Dict[str, Any]:
             'name': user['name'],
             'email': user['email'],
             'mobile_number': user['mobile_number'],
+            'google_token':user['google_token'],
             'created_at': user['created_at'],
             'last_updated': user['last_updated'],
             'last_talked': user['last_talked']
