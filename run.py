@@ -11,8 +11,10 @@ from google_auth_oauthlib.flow import Flow
 import json
 from googleapiclient.discovery import build
 from werkzeug.middleware.proxy_fix import ProxyFix
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 VERIFY_TOKEN = 'yoyo'  # Change this to your actual verify token
@@ -152,6 +154,56 @@ def healthcheck():
         return "the server is active"
     except Exception as e:
         return e
+
+@app.route('/adjunctfromfrontend', methods=['POST'])
+def adjunctfromfrontend():
+    try:
+        # Validate JSON payload
+        if not request.is_json:
+            return jsonify({'error': 'Invalid content type, JSON required.'}), 400
+
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({'error': 'Empty or invalid JSON payload.'}), 400
+
+        # Extract input fields
+        msg = data.get("userPrompt", "")
+        sender = data.get("mobilenumber", "")
+        chat_history = data.get("chatHistory", [])
+        sender=("91"+sender)
+        if not sender or not msg:
+            return jsonify({'error': 'Missing mobilenumber or userPrompt'}), 400
+
+        user_result = db.ensure_user_exists(sender)
+        if not user_result["success"]:
+            print(f"Database error for user {sender}: {user_result.get('error', 'Unknown error')}")
+        else:
+            action = user_result.get("action", "unknown")
+            if action == "created_user":        
+                    print(f"New user created: {sender}")
+            elif action == "existing_user":
+                    print(f"Existing user updated: {sender}")
+        # Call AI response function
+        message_text = ai_response(sender, msg)
+
+        # Optionally store chat history if needed
+        
+        db.store_message(sender, "user", msg)
+        db.store_message(sender, "bot", message_text)
+
+        response_json = {
+            'generatedPrompt': {
+                'generatedResponse': message_text,
+                'emailAPI': False
+            }
+        }
+
+        print("\U0001F680 Sending Response to Frontend:", response_json)
+        return jsonify(response_json), 200
+
+    except Exception as e:
+        print("\u274C Error:", e)
+        return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
