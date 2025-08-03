@@ -24,8 +24,6 @@ CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), 'credits.json')
 SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',        # Read Gmail messages
     'https://www.googleapis.com/auth/gmail.send',            # Send Gmail messages
-    'https://www.googleapis.com/auth/gmail.modify',          # Read and modify Gmail (mark as read, delete, etc.)
-    'https://www.googleapis.com/auth/gmail.labels',          # Manage Gmail labels
     'https://www.googleapis.com/auth/userinfo.email',        # Get user's email address
     'https://www.googleapis.com/auth/userinfo.profile',      # Get user's basic profile info (name, picture)
     'openid'                                                 # For OpenID Connect (recommended for user identity)
